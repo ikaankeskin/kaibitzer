@@ -330,7 +330,7 @@ class GobanLayout {
       return null;
     }
     final c = centerOf(p);
-    if ((c - local).distance > cell * 0.48) {
+    if ((c - local).distance > cell * 0.55) {
       return null;
     }
     return p;

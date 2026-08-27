@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kaibitzer/coach/computer_player.dart';
 import 'package:kaibitzer/coach/kaibitzer_coach.dart';
 import 'package:kaibitzer/engine/game.dart';
 import 'package:kaibitzer/engine/point.dart';
@@ -7,6 +10,17 @@ import 'package:kaibitzer/engine/stone.dart';
 
 void main() {
   group('Go engine', () {
+    test('white can play after black opening', () {
+      final game = GoGame(GameRules.preset(boardSize: 9));
+      expect(game.toPlay, Stone.black);
+      expect(game.play(const Point(4, 4)).ok, isTrue);
+      expect(game.toPlay, Stone.white);
+      expect(game.play(const Point(3, 3)).ok, isTrue);
+      expect(game.board.at(const Point(4, 4)), Stone.black);
+      expect(game.board.at(const Point(3, 3)), Stone.white);
+      expect(game.toPlay, Stone.black);
+    });
+
     test('captures a surrounded stone', () {
       final game = GoGame(GameRules.preset(boardSize: 9));
       expect(game.play(const Point(1, 0)).ok, isTrue);
@@ -118,6 +132,14 @@ void main() {
       final reply = KaibitzerCoach().answer(game, 'What is a good move?');
       expect(reply.fromCoach, isTrue);
       expect(reply.recommendations, isNotEmpty);
+    });
+
+    test('computer replies with a legal move', () {
+      final game = GoGame(GameRules.preset(boardSize: 9));
+      expect(game.play(const Point(4, 4)).ok, isTrue);
+      final point = ComputerPlayer(random: Random(7)).choose(game, AiLevel.hard);
+      expect(point, isNotNull);
+      expect(game.isLegal(point!), isTrue);
     });
   });
 

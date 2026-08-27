@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../engine/rules.dart';
+import '../../engine/stone.dart';
 import '../../state/game_session.dart';
+import '../../state/match_config.dart';
+import '../../coach/computer_player.dart';
 import '../app_theme.dart';
 import '../goban/goban_style.dart';
 import 'play_screen.dart';
@@ -22,6 +25,9 @@ class _SetupScreenState extends State<SetupScreen> {
   int captureGoal = 1;
   late double komi;
   GobanAppearance appearance = const GobanAppearance();
+  OpponentKind opponent = OpponentKind.computer;
+  AiLevel aiLevel = AiLevel.medium;
+  Stone humanColor = Stone.black;
 
   @override
   void initState() {
@@ -63,6 +69,53 @@ class _SetupScreenState extends State<SetupScreen> {
             label: '$boardSize',
             onChanged: (value) => setState(() => boardSize = value.round()),
           ),
+          const _SectionTitle('Opponent'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Computer'),
+                selected: opponent == OpponentKind.computer,
+                onSelected: (_) => setState(() => opponent = OpponentKind.computer),
+              ),
+              ChoiceChip(
+                label: const Text('Pass and play'),
+                selected: opponent == OpponentKind.local,
+                onSelected: (_) => setState(() => opponent = OpponentKind.local),
+              ),
+            ],
+          ),
+          if (opponent == OpponentKind.computer) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final level in AiLevel.values)
+                  ChoiceChip(
+                    label: Text(level.title),
+                    selected: aiLevel == level,
+                    onSelected: (_) => setState(() => aiLevel = level),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Play Black'),
+                  selected: humanColor == Stone.black,
+                  onSelected: (_) => setState(() => humanColor = Stone.black),
+                ),
+                ChoiceChip(
+                  label: const Text('Play White'),
+                  selected: humanColor == Stone.white,
+                  onSelected: (_) => setState(() => humanColor = Stone.white),
+                ),
+              ],
+            ),
+          ],
           const _SectionTitle('Rules'),
           for (final set in RuleSet.values)
             ListTile(
@@ -216,7 +269,15 @@ class _SetupScreenState extends State<SetupScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
-          create: (_) => GameSession.start(rules: rules, appearance: appearance),
+          create: (_) => GameSession.start(
+            rules: rules,
+            appearance: appearance,
+            match: MatchConfig(
+              opponent: opponent,
+              aiLevel: aiLevel,
+              humanColor: humanColor,
+            ),
+          ),
           child: const PlayScreen(),
         ),
       ),

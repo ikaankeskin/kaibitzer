@@ -83,18 +83,19 @@ class _BoardPane extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 720, maxHeight: 720),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: GobanView(
+          child: IgnorePointer(
+            ignoring: session.inputLocked && game.phase != GamePhase.scoring,
+            child: GobanView(
             board: game.board,
             appearance: session.appearance,
             lastMove: game.lastMove?.point,
-            hover: session.hover,
             toPlay: game.toPlay,
             hints: session.showHints ? session.hints : const [],
             deadStones: game.deadStones,
             phase: game.phase,
             moveNumbers: _moveNumbers(game),
             onTap: session.tapPoint,
-            onHover: session.setHover,
+            ),
           ),
         ),
       ),
@@ -121,11 +122,18 @@ class _StatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = session.game;
-    final score = game.currentScore();
     String status;
     switch (game.phase) {
       case GamePhase.playing:
-        status = '${game.toPlay.label} to play';
+        if (session.thinking) {
+          status = '${game.toPlay.label} (computer) thinking…';
+        } else if (session.vsComputer) {
+          status = session.isHumanTurn
+              ? '${game.toPlay.label} to play · you'
+              : '${game.toPlay.label} to play · computer';
+        } else {
+          status = '${game.toPlay.label} to play';
+        }
         break;
       case GamePhase.scoring:
         status = 'Scoring — tap dead groups';
@@ -138,18 +146,16 @@ class _StatusBar extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       color: AppColors.lacquer,
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 6,
-        alignment: WrapAlignment.spaceBetween,
+      child: Row(
         children: [
-          Text(status, style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600)),
-          Text(
-            'Black capt. ${game.blackCaptures} · White capt. ${game.whiteCaptures}',
-            style: TextStyle(color: AppColors.paper.withValues(alpha: 0.75)),
+          Expanded(
+            child: Text(
+              status,
+              style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600),
+            ),
           ),
           Text(
-            'Est. Black ${score.black.toStringAsFixed(1)} — White ${score.white.toStringAsFixed(1)}',
+            'Captures B ${game.blackCaptures}  W ${game.whiteCaptures}',
             style: TextStyle(color: AppColors.paper.withValues(alpha: 0.75)),
           ),
         ],
@@ -181,7 +187,10 @@ class _ActionBar extends StatelessWidget {
             _Tool(
               icon: Icons.pan_tool_outlined,
               label: 'Pass',
-              onPressed: game.phase == GamePhase.playing ? session.pass : null,
+              onPressed:
+                  game.phase == GamePhase.playing && !session.inputLocked
+                      ? session.pass
+                      : null,
             ),
             _Tool(
               icon: Icons.flag_outlined,

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../engine/rules.dart';
 import '../../state/game_session.dart';
+import '../../state/match_config.dart';
 import '../app_theme.dart';
 import '../goban/goban_style.dart';
 import 'play_screen.dart';
@@ -49,20 +50,22 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 36),
               _QuickStartCard(
-                title: '9×9 teaching game',
-                subtitle: 'Japanese rules · Capture Go optional from setup',
+                title: '9×9 vs computer',
+                subtitle: 'Japanese rules · you play Black',
                 onTap: () => _start(
                   context,
                   GameRules.preset(boardSize: 9, ruleSet: RuleSet.japanese),
+                  match: const MatchConfig.computer(),
                 ),
               ),
               const SizedBox(height: 12),
               _QuickStartCard(
-                title: '19×19 even game',
+                title: '19×19 vs computer',
                 subtitle: 'Japanese rules · komi 6.5',
                 onTap: () => _start(
                   context,
                   GameRules.preset(boardSize: 19, ruleSet: RuleSet.japanese),
+                  match: const MatchConfig.computer(),
                 ),
               ),
               const SizedBox(height: 20),
@@ -93,13 +96,18 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _start(BuildContext context, GameRules rules) {
+  void _start(
+    BuildContext context,
+    GameRules rules, {
+    MatchConfig match = const MatchConfig.computer(),
+  }) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
           create: (_) => GameSession.start(
             rules: rules,
             appearance: const GobanAppearance(),
+            match: match,
           ),
           child: const PlayScreen(),
         ),

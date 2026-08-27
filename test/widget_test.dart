@@ -6,6 +6,7 @@ void main() {
     await tester.pumpWidget(const KaibitzerApp());
     expect(find.text('KAIBITZER'), findsOneWidget);
     expect(find.text('Customize board & rules'), findsOneWidget);
+    expect(find.text('9×9 vs computer'), findsOneWidget);
 
     await tester.tap(find.text('Customize board & rules'));
     await tester.pumpAndSettle();

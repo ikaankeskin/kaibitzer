@@ -12,28 +12,24 @@ class GobanView extends StatefulWidget {
   final Board board;
   final GobanAppearance appearance;
   final Point? lastMove;
-  final Point? hover;
   final Stone toPlay;
   final List<MoveRecommendation> hints;
   final Set<Point> deadStones;
   final GamePhase phase;
   final Map<Point, int> moveNumbers;
   final ValueChanged<Point> onTap;
-  final ValueChanged<Point?> onHover;
 
   const GobanView({
     super.key,
     required this.board,
     required this.appearance,
     required this.lastMove,
-    required this.hover,
     required this.toPlay,
     required this.hints,
     required this.deadStones,
     required this.phase,
     required this.moveNumbers,
     required this.onTap,
-    required this.onHover,
   });
 
   @override
@@ -41,6 +37,9 @@ class GobanView extends StatefulWidget {
 }
 
 class _GobanViewState extends State<GobanView> {
+  Point? _hover;
+  GobanLayout? _layout;
+
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -48,19 +47,23 @@ class _GobanViewState extends State<GobanView> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final size = Size(constraints.maxWidth, constraints.maxHeight);
-          final layout = GobanLayout.fromSize(
+          _layout = GobanLayout.fromSize(
             size,
             widget.board.size,
             widget.appearance.showCoordinates,
           );
           return MouseRegion(
-            onHover: (event) {
-              widget.onHover(layout.pointAt(event.localPosition));
+            cursor: SystemMouseCursors.click,
+            onHover: (event) => _updateHover(event.localPosition),
+            onExit: (_) {
+              if (_hover != null) {
+                setState(() => _hover = null);
+              }
             },
-            onExit: (_) => widget.onHover(null),
-            child: GestureDetector(
-              onTapDown: (details) {
-                final point = layout.pointAt(details.localPosition);
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (event) {
+                final point = _layout?.pointAt(event.localPosition);
                 if (point != null) {
                   widget.onTap(point);
                 }
@@ -70,7 +73,7 @@ class _GobanViewState extends State<GobanView> {
                   board: widget.board,
                   appearance: widget.appearance,
                   lastMove: widget.lastMove,
-                  hover: widget.hover,
+                  hover: _hover,
                   hoverColor: widget.toPlay,
                   hints: widget.hints,
                   deadStones: widget.deadStones,
@@ -84,5 +87,13 @@ class _GobanViewState extends State<GobanView> {
         },
       ),
     );
+  }
+
+  void _updateHover(Offset local) {
+    final point = _layout?.pointAt(local);
+    if (point == _hover) {
+      return;
+    }
+    setState(() => _hover = point);
   }
 }

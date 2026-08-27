@@ -108,7 +108,7 @@ class KaibitzerCoach {
     if (game.phase != GamePhase.playing) {
       return const [];
     }
-    final legal = game.legalMoves();
+    final legal = _searchMoves(game);
     if (legal.isEmpty) {
       return const [];
     }
@@ -443,6 +443,34 @@ class KaibitzerCoach {
       );
     }
     return groups;
+  }
+
+  List<Point> _searchMoves(GoGame game) {
+    final legal = game.legalMoves();
+    if (legal.length <= 64) {
+      return legal;
+    }
+    final hot = <Point>{};
+    for (final p in game.board.intersections) {
+      if (!game.board.at(p).isPlayer) {
+        continue;
+      }
+      for (var dx = -2; dx <= 2; dx++) {
+        for (var dy = -2; dy <= 2; dy++) {
+          final n = Point(p.x + dx, p.y + dy);
+          if (n.isOnBoard(game.size) && game.board.at(n) == Stone.empty) {
+            hot.add(n);
+          }
+        }
+      }
+    }
+    for (final star in game.board.hoshiPoints()) {
+      if (game.board.at(star) == Stone.empty) {
+        hot.add(star);
+      }
+    }
+    final focused = legal.where(hot.contains).toList();
+    return focused.isEmpty ? legal : focused;
   }
 
   bool _matches(String text, List<String> keys) =>
