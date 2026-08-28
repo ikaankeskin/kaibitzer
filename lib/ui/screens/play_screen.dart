@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../ai/engine_kind.dart';
+import '../../coach/computer_player.dart';
 import '../../engine/game.dart';
 import '../../engine/point.dart';
 import '../../state/game_session.dart';
@@ -8,6 +11,7 @@ import '../app_theme.dart';
 import '../goban/goban_style.dart';
 import '../goban/goban_view.dart';
 import 'coach_panel.dart';
+import 'debug_console.dart';
 
 class PlayScreen extends StatelessWidget {
   const PlayScreen({super.key});
@@ -18,10 +22,61 @@ class PlayScreen extends StatelessWidget {
       builder: (context, session, _) {
         final game = session.game;
         final wide = MediaQuery.sizeOf(context).width >= 920;
-        return Scaffold(
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyH): session.recommendMoves,
+            const SingleActivator(LogicalKeyboardKey.slash): session.recommendMoves,
+            const SingleActivator(LogicalKeyboardKey.digit1): () => session.playHint(0),
+            const SingleActivator(LogicalKeyboardKey.digit2): () => session.playHint(1),
+            const SingleActivator(LogicalKeyboardKey.digit3): () => session.playHint(2),
+            const SingleActivator(LogicalKeyboardKey.numpad1): () => session.playHint(0),
+            const SingleActivator(LogicalKeyboardKey.numpad2): () => session.playHint(1),
+            const SingleActivator(LogicalKeyboardKey.numpad3): () => session.playHint(2),
+          },
+          child: Focus(
+            autofocus: true,
+            child: Scaffold(
           appBar: AppBar(
             title: Text(game.rules.description),
             actions: [
+              IconButton(
+                tooltip: session.showDebugConsole
+                    ? 'Hide engine console'
+                    : 'Show engine console',
+                onPressed: session.toggleDebugConsole,
+                icon: Icon(
+                  session.showDebugConsole
+                      ? Icons.terminal
+                      : Icons.terminal_outlined,
+                ),
+              ),
+              PopupMenuButton<EngineKind>(
+                tooltip: 'Engine',
+                initialValue: session.engineKind,
+                onSelected: session.setEngine,
+                itemBuilder: (context) => [
+                  for (final kind in EngineKind.values)
+                    PopupMenuItem(
+                      value: kind,
+                      child: Text('${kind.title}${session.engineKind == kind ? '  ✓' : ''}'),
+                    ),
+                ],
+                icon: const Icon(Icons.smart_toy_outlined),
+              ),
+              if (session.vsComputer)
+                PopupMenuButton<AiLevel>(
+                  tooltip: 'Difficulty',
+                  initialValue: session.aiLevel,
+                  onSelected: session.setAiLevel,
+                  itemBuilder: (context) => [
+                    for (final level in AiLevel.values)
+                      PopupMenuItem(
+                        value: level,
+                        child: Text('${level.title}${session.aiLevel == level ? '  ✓' : ''}'),
+                      ),
+                  ],
+                  icon: const Icon(Icons.speed),
+                ),
               IconButton(
                 tooltip: session.appearance.showMoveNumbers
                     ? 'Hide move numbers'
@@ -63,7 +118,15 @@ class PlayScreen extends StatelessWidget {
                     : _BoardPane(session: session),
               ),
               _ActionBar(session: session, showCoachButton: !wide),
+              if (session.showDebugConsole)
+                DebugConsole(
+                  logs: session.debugLogs,
+                  onClear: session.clearDebugLogs,
+                  onHide: session.toggleDebugConsole,
+                ),
             ],
+          ),
+            ),
           ),
         );
       },
@@ -154,6 +217,13 @@ class _StatusBar extends StatelessWidget {
               style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600),
             ),
           ),
+          Text(
+            session.vsComputer
+                ? '${session.aiLevel.title} · ${session.engineName}'
+                : session.engineName,
+            style: TextStyle(color: AppColors.paper.withValues(alpha: 0.75)),
+          ),
+          const SizedBox(width: 12),
           Text(
             'Captures B ${game.blackCaptures}  W ${game.whiteCaptures}',
             style: TextStyle(color: AppColors.paper.withValues(alpha: 0.75)),

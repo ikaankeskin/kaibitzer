@@ -1,3 +1,4 @@
+import '../ai/engine_kind.dart';
 import '../coach/computer_player.dart';
 import '../engine/stone.dart';
 
@@ -7,22 +8,27 @@ class MatchConfig {
   final OpponentKind opponent;
   final AiLevel aiLevel;
   final Stone humanColor;
+  final EngineKind engine;
 
   const MatchConfig({
     this.opponent = OpponentKind.local,
     this.aiLevel = AiLevel.medium,
     this.humanColor = Stone.black,
+    this.engine = EngineKind.heuristic,
   });
 
-  const MatchConfig.local() : this();
+  const MatchConfig.local({EngineKind engine = EngineKind.heuristic})
+      : this(engine: engine);
 
   const MatchConfig.computer({
     AiLevel level = AiLevel.medium,
     Stone humanColor = Stone.black,
+    EngineKind engine = EngineKind.heuristic,
   }) : this(
           opponent: OpponentKind.computer,
           aiLevel: level,
           humanColor: humanColor,
+          engine: engine,
         );
 
   bool get vsComputer => opponent == OpponentKind.computer;
@@ -31,8 +37,8 @@ class MatchConfig {
 
   String get subtitle {
     if (!vsComputer) {
-      return 'Pass and play';
+      return 'Pass and play · ${engine.title} hints';
     }
-    return 'You ${humanColor.label} · computer ${aiLevel.title}';
+    return 'You ${humanColor.label} · ${engine.title} ${aiLevel.title}';
   }
 }

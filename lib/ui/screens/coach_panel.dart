@@ -14,6 +14,7 @@ class CoachPanel extends StatefulWidget {
 class _CoachPanelState extends State<CoachPanel> {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
+  int _lastCount = 0;
 
   @override
   void dispose() {
@@ -22,9 +23,22 @@ class _CoachPanelState extends State<CoachPanel> {
     super.dispose();
   }
 
+  void _stickToLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) {
+        return;
+      }
+      _scroll.jumpTo(_scroll.position.minScrollExtent);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<GameSession>();
+    if (session.messages.length != _lastCount) {
+      _lastCount = session.messages.length;
+      _stickToLatest();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -47,7 +61,7 @@ class _CoachPanelState extends State<CoachPanel> {
             runSpacing: 8,
             children: [
               ActionChip(
-                label: const Text('Recommend a move'),
+                label: const Text('Recommend  (H)'),
                 onPressed: session.recommendMoves,
               ),
               ActionChip(
@@ -65,14 +79,22 @@ class _CoachPanelState extends State<CoachPanel> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: Text(
+            'H hint · 1 2 3 play a suggestion',
+            style: TextStyle(color: AppColors.paper.withValues(alpha: 0.55), fontSize: 12),
+          ),
+        ),
         const SizedBox(height: 8),
         Expanded(
           child: ListView.builder(
             controller: _scroll,
+            reverse: true,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             itemCount: session.messages.length,
             itemBuilder: (context, index) {
-              final message = session.messages[index];
+              final message = session.messages[session.messages.length - 1 - index];
               final mine = !message.fromCoach;
               return Align(
                 alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
@@ -131,14 +153,5 @@ class _CoachPanelState extends State<CoachPanel> {
     }
     context.read<GameSession>().ask(trimmed);
     _controller.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../ai/engine_kind.dart';
 import '../../engine/rules.dart';
 import '../../engine/stone.dart';
 import '../../state/game_session.dart';
@@ -28,6 +29,7 @@ class _SetupScreenState extends State<SetupScreen> {
   OpponentKind opponent = OpponentKind.computer;
   AiLevel aiLevel = AiLevel.medium;
   Stone humanColor = Stone.black;
+  EngineKind engine = EngineKind.heuristic;
 
   @override
   void initState() {
@@ -116,6 +118,26 @@ class _SetupScreenState extends State<SetupScreen> {
               ],
             ),
           ],
+          const _SectionTitle('Engine'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final kind in EngineKind.values)
+                ChoiceChip(
+                  label: Text(kind.title),
+                  selected: engine == kind,
+                  onSelected: (_) => setState(() => engine = kind),
+                ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              engine.summary,
+              style: TextStyle(color: AppColors.paper.withValues(alpha: 0.65), height: 1.4),
+            ),
+          ),
           const _SectionTitle('Rules'),
           for (final set in RuleSet.values)
             ListTile(
@@ -276,6 +298,7 @@ class _SetupScreenState extends State<SetupScreen> {
               opponent: opponent,
               aiLevel: aiLevel,
               humanColor: humanColor,
+              engine: engine,
             ),
           ),
           child: const PlayScreen(),

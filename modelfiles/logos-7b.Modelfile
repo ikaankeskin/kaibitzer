@@ -1,0 +1,11 @@
+# Ollama blueprint for the LoGos-7B GGUF used by Kaibitzer.
+# Edit FROM to your GGUF path (absolute paths are most reliable on Windows).
+#
+#   ollama create logos-7b -f modelfiles/logos-7b.Modelfile
+#
+# Original weights: https://huggingface.co/YichuanMa/LoGos-7B (Apache-2.0)
+
+FROM ./engines/logos-7b-q8_0.gguf
+PARAMETER temperature 0.7
+PARAMETER num_ctx 4096
+PARAMETER num_predict 512

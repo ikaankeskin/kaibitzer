@@ -11,7 +11,7 @@ void main() {
     await tester.tap(find.text('Customize board & rules'));
     await tester.pumpAndSettle();
     expect(find.text('New game'), findsOneWidget);
-    expect(find.text('Japanese'), findsOneWidget);
+    expect(find.text('Computer'), findsOneWidget);
     expect(find.text('Start game'), findsOneWidget);
   });
 }
