@@ -9,12 +9,20 @@ class MatchConfig {
   final AiLevel aiLevel;
   final Stone humanColor;
   final EngineKind engine;
+  final String? logosUrl;
+  final String? logosModel;
+  final String? logosApiKey;
+  final String? kataGoUrl;
 
   const MatchConfig({
     this.opponent = OpponentKind.local,
     this.aiLevel = AiLevel.medium,
     this.humanColor = Stone.black,
     this.engine = EngineKind.heuristic,
+    this.logosUrl,
+    this.logosModel,
+    this.logosApiKey,
+    this.kataGoUrl,
   });
 
   const MatchConfig.local({EngineKind engine = EngineKind.heuristic})

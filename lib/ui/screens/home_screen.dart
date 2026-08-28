@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app_version.dart';
 import '../../engine/rules.dart';
 import '../../state/game_session.dart';
 import '../../state/match_config.dart';
@@ -31,9 +32,19 @@ class HomeScreen extends StatelessWidget {
                       letterSpacing: 4,
                     ),
               ),
+              const SizedBox(height: 6),
+              Text(
+                '$appVersionLabel · web preview',
+                key: const Key('app-version'),
+                style: TextStyle(
+                  color: AppColors.paper.withValues(alpha: 0.45),
+                  fontSize: 12,
+                  letterSpacing: 0.6,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
-                'Play Go. Ask the sideline tutor.',
+                'Play Go. Ask the sideline tutor. Works in the browser without extra software.',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppColors.paper.withValues(alpha: 0.82),
                     ),

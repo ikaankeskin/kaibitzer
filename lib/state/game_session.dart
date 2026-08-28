@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../ai/engine_factory.dart';
 import '../ai/logos_engine.dart';
@@ -50,7 +50,7 @@ class GameSession extends ChangeNotifier {
         debugLogs = [],
         hints = const [],
         showHints = false,
-        showDebugConsole = true,
+        showDebugConsole = !kIsWeb,
         thinking = false,
         aiLevel = match.aiLevel,
         engineKind = match.engine,
@@ -159,6 +159,10 @@ class GameSession extends ChangeNotifier {
       kind: kind,
       fallback: HeuristicEngine(coach: coach),
       log: logEngineEntry,
+      logosUrl: match.logosUrl,
+      logosModel: match.logosModel,
+      logosApiKey: match.logosApiKey,
+      kataGoUrl: match.kataGoUrl,
     );
     _engineFuture = future;
     future.then((engine) {
@@ -210,8 +214,9 @@ class GameSession extends ChangeNotifier {
         const CoachMessage(
           fromCoach: true,
           text:
-              'KataGo was not found, so I am using the built-in tutor. '
-              'Install katago.exe on Windows and set KATAGO_PATH, or pick another engine.',
+              'KataGo is not reachable from here, so I am using the built-in tutor. '
+              'On desktop, install katago.exe. On the web, there is no public free KataGo API — '
+              'paste an HTTP analysis URL if you have a server.',
         ),
       );
     } else if (requested == EngineKind.logos) {
@@ -219,8 +224,9 @@ class GameSession extends ChangeNotifier {
         const CoachMessage(
           fromCoach: true,
           text:
-              'LoGos-7B talks to a local server (Ollama, llama.cpp, or LM Studio). '
-              'If nothing is running, I fall back to the built-in tutor for that move.',
+              'LoGos-7B talks to Ollama on this machine, or any OpenAI-compatible URL you set. '
+              'Nothing free on the public internet hosts LoGos-7B today. '
+              'If the server is down, I fall back to the built-in tutor for that move.',
         ),
       );
     } else if (requested == EngineKind.heuristic) {

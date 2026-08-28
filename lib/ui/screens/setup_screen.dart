@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../ai/engine_kind.dart';
+import '../../ai/remote_config.dart';
 import '../../engine/rules.dart';
 import '../../engine/stone.dart';
 import '../../state/game_session.dart';
@@ -30,11 +31,37 @@ class _SetupScreenState extends State<SetupScreen> {
   AiLevel aiLevel = AiLevel.medium;
   Stone humanColor = Stone.black;
   EngineKind engine = EngineKind.heuristic;
+  late final TextEditingController _logosUrl;
+  late final TextEditingController _logosModel;
+  late final TextEditingController _logosKey;
+  late final TextEditingController _kataGoUrl;
 
   @override
   void initState() {
     super.initState();
     komi = ruleSet.defaultKomi;
+    final remote = RemoteEngineConfig.resolve();
+    _logosUrl = TextEditingController(
+      text: remote.logosUrl == RemoteEngineConfig.defaultLogosUrl
+          ? ''
+          : remote.logosUrl,
+    );
+    _logosModel = TextEditingController(
+      text: remote.logosModel == RemoteEngineConfig.defaultLogosModel
+          ? ''
+          : remote.logosModel,
+    );
+    _logosKey = TextEditingController(text: remote.logosApiKey ?? '');
+    _kataGoUrl = TextEditingController(text: remote.kataGoUrl ?? '');
+  }
+
+  @override
+  void dispose() {
+    _logosUrl.dispose();
+    _logosModel.dispose();
+    _logosKey.dispose();
+    _kataGoUrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -136,6 +163,50 @@ class _SetupScreenState extends State<SetupScreen> {
             child: Text(
               engine.summary,
               style: TextStyle(color: AppColors.paper.withValues(alpha: 0.65), height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: Text(
+                'Remote engines (optional)',
+                style: TextStyle(color: AppColors.paper.withValues(alpha: 0.85)),
+              ),
+              subtitle: Text(
+                'Web play always works with the tutor. LoGos/KataGo only if a server answers.',
+                style: TextStyle(color: AppColors.paper.withValues(alpha: 0.55), fontSize: 13),
+              ),
+              children: [
+                TextField(
+                  controller: _logosUrl,
+                  decoration: const InputDecoration(
+                    labelText: 'LoGos URL',
+                    hintText: 'http://127.0.0.1:11434 or OpenAI-compatible /v1',
+                  ),
+                ),
+                TextField(
+                  controller: _logosModel,
+                  decoration: const InputDecoration(
+                    labelText: 'LoGos model id',
+                    hintText: 'logos-7b',
+                  ),
+                ),
+                TextField(
+                  controller: _logosKey,
+                  decoration: const InputDecoration(
+                    labelText: 'LoGos API key (if the host needs one)',
+                  ),
+                ),
+                TextField(
+                  controller: _kataGoUrl,
+                  decoration: const InputDecoration(
+                    labelText: 'KataGo HTTP URL',
+                    hintText: 'https://your-server:2718',
+                  ),
+                ),
+              ],
             ),
           ),
           const _SectionTitle('Rules'),
@@ -279,6 +350,11 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
+  String? _trimOrNull(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   void _start() {
     final rules = GameRules.preset(
       ruleSet: ruleSet,
@@ -299,6 +375,10 @@ class _SetupScreenState extends State<SetupScreen> {
               aiLevel: aiLevel,
               humanColor: humanColor,
               engine: engine,
+              logosUrl: _trimOrNull(_logosUrl.text),
+              logosModel: _trimOrNull(_logosModel.text),
+              logosApiKey: _trimOrNull(_logosKey.text),
+              kataGoUrl: _trimOrNull(_kataGoUrl.text),
             ),
           ),
           child: const PlayScreen(),

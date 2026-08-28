@@ -3,37 +3,77 @@ import 'dart:io';
 import 'engine_kind.dart';
 import 'engine_log.dart';
 import 'katago_gtp_io.dart';
+import 'katago_http.dart';
 import 'logos_engine.dart';
 import 'move_engine.dart';
+import 'remote_config.dart';
 
 Future<MoveEngine> createMoveEngine({
   EngineKind kind = EngineKind.heuristic,
   HeuristicEngine? fallback,
   EngineLogSink? log,
+  String? logosUrl,
+  String? logosModel,
+  String? logosApiKey,
+  String? kataGoUrl,
 }) async {
   final heuristic = fallback ?? HeuristicEngine();
+  final config = RemoteEngineConfig.resolve(
+    logosUrl: logosUrl ?? Platform.environment['LOGOS_URL'],
+    logosModel: logosModel ?? Platform.environment['LOGOS_MODEL'],
+    logosApiKey: logosApiKey ?? Platform.environment['LOGOS_API_KEY'],
+    kataGoUrl: kataGoUrl ?? Platform.environment['KATAGO_URL'],
+  );
   switch (kind) {
     case EngineKind.heuristic:
       return heuristic;
     case EngineKind.katago:
-      return await KataGoGtpEngine.tryLaunch() ?? heuristic;
+      final local = await KataGoGtpEngine.tryLaunch();
+      if (local != null) {
+        return local;
+      }
+      final url = config.kataGoUrl;
+      if (url != null && await KataGoHttpEngine.reachable(url)) {
+        log?.call(
+          EngineLogEntry(
+            source: 'session',
+            summary: 'Local katago.exe missing, using KataGo HTTP at $url',
+          ),
+        );
+        return KataGoHttpEngine(baseUrl: url, fallback: heuristic, log: log);
+      }
+      return heuristic;
     case EngineKind.logos:
-      final baseUrl =
-          Platform.environment['LOGOS_URL'] ?? 'http://127.0.0.1:11434';
-      log?.call(
-        EngineLogEntry(
-          source: 'session',
-          summary: 'Starting Ollama if needed at $baseUrl',
-        ),
-      );
-      await ensureOllamaRunning(baseUrl);
+      final local = _isLoopback(config.logosUrl);
+      if (local) {
+        log?.call(
+          EngineLogEntry(
+            source: 'session',
+            summary: 'Starting Ollama if needed at ${config.logosUrl}',
+          ),
+        );
+        await ensureOllamaRunning(config.logosUrl);
+      } else {
+        log?.call(
+          EngineLogEntry(
+            source: 'session',
+            summary: 'LoGos via ${config.logosModel} @ ${config.logosUrl}',
+          ),
+        );
+      }
       return LogosEngine(
         fallback: heuristic,
-        baseUrl: baseUrl,
-        model: Platform.environment['LOGOS_MODEL'] ?? 'logos-7b',
+        baseUrl: config.logosUrl,
+        model: config.logosModel,
+        apiKey: config.logosApiKey,
         log: log,
       );
   }
+}
+
+bool _isLoopback(String url) {
+  final host = Uri.tryParse(url)?.host;
+  return host == '127.0.0.1' || host == 'localhost' || host == '::1';
 }
 
 Future<void> ensureOllamaRunning(String baseUrl) async {

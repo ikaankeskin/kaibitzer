@@ -59,6 +59,7 @@ class LogosEngine implements MoveEngine {
     http.Client? client,
     String? baseUrl,
     String? model,
+    String? apiKey,
     HeuristicEngine? fallback,
     EngineLogSink? log,
   })  : _client = client ?? http.Client(),
@@ -73,6 +74,11 @@ class LogosEngine implements MoveEngine {
               'LOGOS_MODEL',
               defaultValue: 'logos-7b',
             ),
+        apiKey = apiKey ??
+            const String.fromEnvironment(
+              'LOGOS_API_KEY',
+              defaultValue: '',
+            ),
         fallback = fallback ?? HeuristicEngine(),
         _log = log;
 
@@ -80,8 +86,17 @@ class LogosEngine implements MoveEngine {
   final bool _ownsClient;
   final String baseUrl;
   final String model;
+  final String apiKey;
   final HeuristicEngine fallback;
   final EngineLogSink? _log;
+
+  Map<String, String> get _headers {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (apiKey.trim().isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${apiKey.trim()}';
+    }
+    return headers;
+  }
 
   @override
   String get name => 'LoGos-7B';
@@ -174,7 +189,7 @@ class LogosEngine implements MoveEngine {
     final response = await _client
         .post(
           url,
-          headers: const {'Content-Type': 'application/json'},
+          headers: _headers,
           body: jsonEncode({
             'model': model,
             'stream': false,
@@ -227,7 +242,7 @@ class LogosEngine implements MoveEngine {
     final response = await _client
         .post(
           openaiUrl,
-          headers: const {'Content-Type': 'application/json'},
+          headers: _headers,
           body: jsonEncode({
             'model': model,
             'temperature': _temperature(level),

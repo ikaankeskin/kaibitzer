@@ -1,0 +1,51 @@
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [prod]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      - name: Build web
+        run: |
+          VERSION=$(python3 -c "import pathlib,re; t=pathlib.Path('pubspec.yaml').read_text(); m=re.search(r'^version:\s*([0-9.]+)\+([0-9]+)', t, re.M); print(m.group(1)+' '+m.group(2))")
+          APP_VERSION=${VERSION%% *}
+          APP_BUILD=${VERSION##* }
+          flutter build web --release --base-href /kaibitzer/ \
+            --dart-define=APP_VERSION="$APP_VERSION" \
+            --dart-define=APP_BUILD="$APP_BUILD"
+      - name: SPA fallback for unknown paths
+        run: cp build/web/index.html build/web/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

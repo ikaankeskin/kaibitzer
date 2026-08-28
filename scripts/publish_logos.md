@@ -28,3 +28,5 @@ ollama push ikaankeskin/logos-7b
 ```
 
 Consumers: `ollama pull ikaankeskin/logos-7b`.
+
+The library README is **not** part of `ollama push`. While signed in as the owner, paste `docs/logos-ollama-readme.md` into the Readme editor on https://ollama.com/ikaankeskin/logos-7b (or POST `readme=` to that URL). Optional one-line summary (max 255 chars): `Q8_0 GGUF of YichuanMa/LoGos-7B: a 7B Go reasoning model. Not a new training run.`

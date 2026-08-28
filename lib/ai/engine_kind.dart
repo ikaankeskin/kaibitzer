@@ -15,9 +15,9 @@ extension EngineKindLabels on EngineKind {
         EngineKind.heuristic =>
           'On-device tactics and opening sense. Always available, modest strength.',
         EngineKind.katago =>
-          'AlphaGo-line neural net via GTP. Needs katago.exe, a model, and a config (Windows desktop).',
+          'Neural net. Desktop runs katago.exe; the web app can call an HTTP analysis server if you set a URL. There is no public free KataGo API.',
         EngineKind.logos =>
-          'Local Go LLM (YichuanMa/LoGos-7B). Serve it with Ollama, llama.cpp, or LM Studio.',
+          'Go LLM (YichuanMa/LoGos-7B). Tries local Ollama, or any OpenAI-compatible URL you set. If nothing answers, the tutor plays.',
       };
 
   bool get isNeuralNet => this != EngineKind.heuristic;

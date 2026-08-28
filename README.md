@@ -23,12 +23,42 @@ Kaibitzer is a Flutter app. The **game and tutor** run everywhere Flutter does. 
 | **Windows desktop** (`flutter run -d windows`) | Yes | Yes — Ollama (NVIDIA/AMD/CPU) | Yes — OpenCL build + network |
 | **macOS desktop** (`flutter run -d macos`) | Yes | Yes — Ollama (Metal) | Yes — download a **macOS** KataGo build, not the Windows zip |
 | **Linux desktop** | Yes | Yes — Ollama | Yes — OpenCL, CUDA, or Eigen build |
-| **Chrome / Edge** (`flutter run -d chrome`) | Yes | Yes — browser talks to Ollama over HTTP | No — the browser cannot spawn `katago` |
-| **Android / iOS** | Yes | Not as a local 7B yet — use a remote OpenAI-compatible URL later | No |
+| **Chrome / Edge** (`flutter run -d chrome`) or **GitHub Pages** | Yes | Yes, if Ollama (or another OpenAI-compatible URL) is reachable from the browser | Only if you set a KataGo **HTTP** URL |
+| **Android / iOS** | Yes | Remote OpenAI-compatible URL if you set one | HTTP URL only; no in-app binary |
 
-**Rule of thumb:** local LoGos needs Ollama (or llama.cpp / LM Studio) on the **same machine** as the app, or a reachable URL. Local KataGo needs a native binary. Phones and the web browser never run KataGo in-process.
+**Rule of thumb:** the goban and tutor run in the browser with no extras. Local LoGos needs Ollama (CORS allowed) or a URL you provide. Local KataGo needs a native binary; the web build can only talk to an HTTP analysis server if you have one. There is **no public free KataGo or LoGos-7B inference API** with CORS today (Hugging Face serverless needs a token and a GPU; Ollama.com is a download, not a hosted chat API).
 
 VRAM for the verified Q8 GGUF is about **8 GB**. A 6–8 GB GPU can still run a smaller quant; CPU-only Ollama works but is slow.
+
+## Play on the web (GitHub Pages)
+
+Each push to **`prod`** builds the Flutter web app and deploys to GitHub Pages:
+
+**https://ikaankeskin.github.io/kaibitzer/**
+
+First time: in the GitHub repo, Settings → Pages → Source **GitHub Actions**. After that, `.github/workflows/deploy-pages.yml` publishes on every push to `prod` (and on version tags `v*`).
+
+`master` is development. Merge (or cherry-pick) into `prod` when you want the site updated. Do not push WIP to `prod`.
+
+The published game is the **base version**: vs computer, pass-and-play, hints, and the built-in tutor. LoGos and KataGo stay in the engine list. They are used only when a server answers; otherwise that turn uses the tutor.
+
+| Engine on the web | What it tries | If it fails |
+| --- | --- | --- |
+| Built-in tutor | On-device | — |
+| LoGos-7B | `http://127.0.0.1:11434` (local Ollama), or `?logos_url=` / setup field / `LOGOS_URL` | Tutor for that move |
+| KataGo | `?katago_url=` / setup field / `KATAGO_URL` HTTP analysis API | Tutor |
+
+For local Ollama from the GitHub Pages origin, allow CORS:
+
+```bash
+# Windows
+set OLLAMA_ORIGINS=https://ikaankeskin.github.io
+ollama serve
+```
+
+Optional query string: `?logos_url=https://your-openai-compatible/v1&logos_model=…&logos_key=…&katago_url=https://…`
+
+Do not put secrets in a public URL unless you accept that they are visible.
 
 ## Requirements
 
@@ -74,7 +104,8 @@ Default endpoint: `http://127.0.0.1:11434`, model name `logos-7b`.
 | --- | --- |
 | `LOGOS_URL` | Server root (`http://127.0.0.1:11434` or `http://127.0.0.1:11434/v1`) |
 | `LOGOS_MODEL` | Model id (default `logos-7b`) |
-| `OLLAMA_ORIGINS` | Set to `*` so Chrome can call Ollama |
+| `LOGOS_API_KEY` | Optional Bearer token for a hosted OpenAI-compatible API |
+| `OLLAMA_ORIGINS` | Set to `*` or your Pages origin so Chrome can call Ollama |
 
 On **Windows / macOS / Linux desktop**, the app starts `ollama serve` if port 11434 is down. **Chrome** cannot spawn Ollama — start it yourself, with CORS allowed:
 
@@ -106,7 +137,7 @@ chmod +x scripts/import_logos.sh
 
 LoGos is trained on a **Chinese** board template (move list + `1 / -1 / 0` matrix). The app sends that format. Expect **a few minutes per move** at Q8 on a 3080-class GPU (long chain-of-thought, ~2 tok/s in our test).
 
-Production can point `LOGOS_URL` / `LOGOS_MODEL` at a hosted API instead of localhost.
+Production can point `LOGOS_URL` / `LOGOS_MODEL` / `LOGOS_API_KEY` at a hosted OpenAI-compatible API. No free public host currently serves LoGos-7B.
 
 ### KataGo
 
@@ -118,6 +149,7 @@ Production can point `LOGOS_URL` / `LOGOS_MODEL` at a hosted API instead of loca
 | `KATAGO_HOME` | Working directory |
 | `KATAGO_MODEL` | Network (`.bin.gz`) |
 | `KATAGO_CONFIG` | GTP config |
+| `KATAGO_URL` | Optional HTTP analysis server (web, or desktop fallback) |
 
 **Windows:** OpenCL zip from KataGo releases, plus a `kata1-b18c384nbt` network. First launch autotunes the GPU.
 
@@ -127,7 +159,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\ensure_local_engines.ps1
 
 That script is **Windows-only** (downloads the Windows OpenCL build). On macOS or Linux, install a matching KataGo release yourself and set `KATAGO_PATH`.
 
-Chrome cannot use KataGo.
+Chrome cannot spawn `katago.exe`. On the web, KataGo only works if you provide an HTTP analysis server URL. If that URL is missing or down, the tutor plays.
 
 ## LoGos from scratch (advanced)
 
@@ -141,16 +173,38 @@ Do **not** `ollama create` from the raw safetensors folder on current Ollama (Qw
 
 ## Sharing the converted model
 
-The model card is live at [ikaankeskin/logos-7b-gguf](https://huggingface.co/ikaankeskin/logos-7b-gguf). The Q8 GGUF upload to Hugging Face and `ollama push ikaankeskin/logos-7b` were paused mid-transfer; resume later with `scripts/publish_logos.md`.
-
-Until those finish, import a local GGUF (`scripts/import_logos.ps1` / `import_logos.sh`) or use an Ollama model already named `logos-7b`.
-
-When the Hub file is complete:
+The Q8 GGUF is on [Hugging Face](https://huggingface.co/ikaankeskin/logos-7b-gguf) and as [ikaankeskin/logos-7b](https://ollama.com/ikaankeskin/logos-7b) on the Ollama library.
 
 ```bash
+ollama pull ikaankeskin/logos-7b
+# or from the Hub file:
 ollama pull hf.co/ikaankeskin/logos-7b-gguf:logos-7b-q8_0.gguf
 ollama cp hf.co/ikaankeskin/logos-7b-gguf:logos-7b-q8_0.gguf logos-7b
 ```
+
+You can still import a local GGUF with `scripts/import_logos.ps1` / `import_logos.sh`.
+
+## Versions, branches, and later store apps
+
+The app is **0.x** SemVer (`pubspec.yaml` + [CHANGELOG.md](CHANGELOG.md)). Right now that is **0.1.0**: the first public web cut. The `+N` build number is what Android/iOS stores will use later.
+
+| Branch | Role |
+| --- | --- |
+| `master` | Day-to-day development |
+| `prod` | What GitHub Pages ships. Tag releases as `v0.1.0`, `v0.2.0`, … |
+
+To ship a web release: bump `version` and `lib/app_version.dart` default, add a CHANGELOG entry, merge to `prod`, tag `vX.Y.Z`, push `prod` and the tag.
+
+### Phones and tablets (after the website)
+
+The same Flutter project already has Android and iOS runners. Store listing is a later **0.2+** step, once the GitHub Pages game feels right:
+
+1. Play the web build; fix the tutor, layout, and rules.
+2. `flutter run -d android` / `-d ios` (or Windows if you want a desktop installer too).
+3. App icons, splash, package id (`com.ikaankeskin.kaibitzer` or similar), signing keys.
+4. Play Console / App Store Connect accounts, privacy text, and screenshots.
+
+We are not submitting store builds in 0.1.0.
 
 ## Project layout
 
