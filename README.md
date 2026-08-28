@@ -36,7 +36,7 @@ Each push to **`prod`** builds the Flutter web app and deploys to GitHub Pages:
 
 **https://ikaankeskin.github.io/kaibitzer/**
 
-First time: in the GitHub repo, Settings → Pages → Source **GitHub Actions**. After that, `.github/workflows/deploy-pages.yml` publishes on every push to `prod` (and on version tags `v*`).
+First time: in the GitHub repo, Settings → Pages → Source **GitHub Actions**. After that, `.github/workflows/deploy-pages.yml` publishes on every push to `prod`. Tags (`v0.1.0`, …) mark releases; they do not deploy by themselves.
 
 `master` is development. Merge (or cherry-pick) into `prod` when you want the site updated. Do not push WIP to `prod`.
 
