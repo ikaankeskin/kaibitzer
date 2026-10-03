@@ -59,6 +59,7 @@ String logosBoardMatrix(GoGame game) {
 
 class LogosParseResult {
   final Point? point;
+  final Stone? player;
   final List<Point> candidates;
   final double? winrate;
   final bool isPass;
@@ -66,6 +67,7 @@ class LogosParseResult {
 
   const LogosParseResult({
     required this.point,
+    this.player,
     required this.candidates,
     required this.winrate,
     required this.isPass,
@@ -74,10 +76,28 @@ class LogosParseResult {
 }
 
 LogosParseResult parseLogosResponse(String text, int boardSize) {
-  final answer = RegExp(r'<answer>(.*?)</answer>', dotAll: true, caseSensitive: false)
-          .firstMatch(text)
-          ?.group(1) ??
-      text;
+  final answer = RegExp(
+    r'<answer>(.*?)</answer>',
+    dotAll: true,
+    caseSensitive: false,
+  ).firstMatch(text)?.group(1);
+  if (answer == null) {
+    return LogosParseResult(
+      point: null,
+      candidates: const [],
+      winrate: null,
+      isPass: false,
+      raw: text,
+    );
+  }
+  final colors = RegExp(
+    r'下一步颜色\s*[:：]\s*(黑|白)',
+  ).allMatches(answer).map((m) => m.group(1)).toSet();
+  final player = colors.length != 1
+      ? null
+      : colors.single == '黑'
+      ? Stone.black
+      : Stone.white;
   final coords = <Point>[];
   final seen = <Point>{};
   void add(Point? p) {
@@ -86,29 +106,33 @@ LogosParseResult parseLogosResponse(String text, int boardSize) {
     }
   }
 
-  final boxedPos = RegExp(r'下一步位置\s*[:：]\s*([A-HJ-T]\d{1,2})', caseSensitive: false);
+  final boxedPos = RegExp(
+    r'下一步位置\s*[:：]\s*([A-HJ-T]\d{1,2})',
+    caseSensitive: false,
+  );
   for (final match in boxedPos.allMatches(answer)) {
     add(Point.parse(match.group(1)!, boardSize));
   }
-  for (final match in RegExp(r'\\boxed\{([A-HJ-T]\d{1,2})\}', caseSensitive: false)
-      .allMatches(answer)) {
+  for (final match in RegExp(
+    r'\\boxed\{([A-HJ-T]\d{1,2})\}',
+    caseSensitive: false,
+  ).allMatches(answer)) {
     add(Point.parse(match.group(1)!, boardSize));
-  }
-  if (coords.isEmpty) {
-    for (final match in RegExp(r'\b([A-HJ-T]\d{1,2})\b').allMatches(answer)) {
-      add(Point.parse(match.group(1)!, boardSize));
-    }
   }
   final winMatch = RegExp(r'下一步胜率\s*[:：]\s*([0-9.]+)').firstMatch(answer);
   var winrate = winMatch == null ? null : double.tryParse(winMatch.group(1)!);
   if (winrate != null && winrate > 1) {
     winrate = winrate / 100;
   }
-  final isPass = coords.isEmpty &&
-      RegExp(r'下一步位置\s*[:：]\s*(pass|PASS|停|虚手)', caseSensitive: false)
-          .hasMatch(answer);
+  final isPass =
+      coords.isEmpty &&
+      RegExp(
+        r'下一步位置\s*[:：]\s*(pass|PASS|停|虚手)',
+        caseSensitive: false,
+      ).hasMatch(answer);
   return LogosParseResult(
     point: coords.isEmpty ? null : coords.first,
+    player: player,
     candidates: coords,
     winrate: winrate,
     isPass: isPass,

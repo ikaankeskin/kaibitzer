@@ -20,6 +20,7 @@ class LogosCompletion {
   final Duration? eval;
   final int? promptTokens;
   final int? evalTokens;
+  final String? finishReason;
 
   const LogosCompletion({
     required this.text,
@@ -31,6 +32,7 @@ class LogosCompletion {
     this.eval,
     this.promptTokens,
     this.evalTokens,
+    this.finishReason,
   });
 
   String get timingSummary {
@@ -52,6 +54,13 @@ class LogosCompletion {
     }
     return parts.join(', ');
   }
+}
+
+class LogosReplyRejected implements Exception {
+  const LogosReplyRejected(this.reason);
+  final String reason;
+  @override
+  String toString() => reason;
 }
 
 class LogosEngine implements MoveEngine {
@@ -172,7 +181,7 @@ class LogosEngine implements MoveEngine {
 
   void _logCompletion(LogosCompletion completion) {
     _emit(
-      summary: '${completion.endpoint} reply from $model · ${completion.timingSummary}',
+      summary: '${completion.endpoint} reply from $model · ${completion.timingSummary}${completion.finishReason == 'length' ? ' · token limit reached' : ''}',
       detail: completion.text,
       elapsed: completion.total ?? completion.wall,
     );
@@ -200,7 +209,7 @@ class LogosEngine implements MoveEngine {
             'keep_alive': '30m',
             'options': {
               'temperature': _temperature(level),
-              'num_predict': 512,
+              'num_predict': 1024,
             },
           }),
         )
@@ -216,6 +225,7 @@ class LogosEngine implements MoveEngine {
     }
     wall.stop();
     return LogosCompletion(
+      finishReason: data['done_reason'] as String?,
       text: content,
       endpoint: 'Ollama /api/chat',
       wall: wall.elapsed,
@@ -246,7 +256,7 @@ class LogosEngine implements MoveEngine {
           body: jsonEncode({
             'model': model,
             'temperature': _temperature(level),
-            'max_tokens': 512,
+            'max_tokens': 1024,
             'messages': [
               {'role': 'system', 'content': system},
               {'role': 'user', 'content': user},
@@ -272,12 +282,41 @@ class LogosEngine implements MoveEngine {
     final promptTokens = usage?['prompt_tokens'];
     final evalTokens = usage?['completion_tokens'];
     return LogosCompletion(
+      finishReason: message?['finish_reason'] as String?,
       text: content,
       endpoint: 'OpenAI /v1/chat/completions',
       wall: wall.elapsed,
       promptTokens: promptTokens is num ? promptTokens.toInt() : null,
       evalTokens: evalTokens is num ? evalTokens.toInt() : null,
     );
+  }
+
+  LogosParseResult _validatedAnswer(GoGame game, LogosCompletion completion) {
+    if (!RegExp(r'<answer>.*?</answer>', dotAll: true, caseSensitive: false)
+        .hasMatch(completion.text)) {
+      throw LogosReplyRejected(completion.finishReason == 'length'
+          ? 'Token limit reached before a complete answer'
+          : 'No complete <answer> block');
+    }
+    final parsed = parseLogosResponse(completion.text, game.size);
+    if (parsed.player == null) {
+      throw const LogosReplyRejected('Answer has missing or conflicting player');
+    }
+    if (parsed.player != game.toPlay) {
+      throw LogosReplyRejected('Answer names ${parsed.player!.label}; '
+          'expected ${game.toPlay.label}');
+    }
+    if (!parsed.isPass && parsed.candidates.isEmpty) {
+      final coordinate = RegExp(r'下一步位置\s*[:：]\s*([A-HJ-T]\d{1,2})', caseSensitive: false)
+          .firstMatch(completion.text)?.group(1);
+      throw LogosReplyRejected(coordinate == null
+          ? 'Answer has no explicit move'
+          : 'Answer coordinate $coordinate is outside the ${game.size}×${game.size} board');
+    }
+    if (!parsed.isPass && _legalPoint(game, parsed) == null) {
+      throw const LogosReplyRejected('Answer move is illegal in the current position');
+    }
+    return parsed;
   }
 
   Point? _legalPoint(GoGame game, LogosParseResult parsed) {
@@ -296,11 +335,24 @@ class LogosEngine implements MoveEngine {
     return point.toCoordinate(game.size);
   }
 
+  bool _supportsBoard(GoGame game) {
+    if (game.size == 19) return true;
+    _emit(summary: 'LoGos is limited to 19×19 boards; '
+        'using ${fallback.name} for ${game.size}×${game.size}');
+    return false;
+  }
+
   @override
   Future<Point?> genMove(GoGame game, AiLevel level) async {
+    if (!_supportsBoard(game)) {
+      final point = await fallback.genMove(game, level);
+      _emit(summary: 'Fallback ${fallback.name} chose '
+          '${_moveLabel(game, point, isPass: point == null)}');
+      return point;
+    }
     try {
       final completion = await _complete(game, level);
-      final parsed = parseLogosResponse(completion.text, game.size);
+      final parsed = _validatedAnswer(game, completion);
       if (parsed.isPass) {
         _emit(summary: 'Parsed pass from LoGos');
         return null;
@@ -316,6 +368,11 @@ class LogosEngine implements MoveEngine {
       _emit(
         summary: 'Illegal or unparsed LoGos reply, falling back to ${fallback.name}',
         detail: parsed.raw,
+        isError: true,
+      );
+    } on LogosReplyRejected catch (error) {
+      _emit(
+        summary: 'LoGos reply rejected: ${error.reason}; falling back to ${fallback.name}',
         isError: true,
       );
     } catch (error) {
@@ -334,9 +391,10 @@ class LogosEngine implements MoveEngine {
 
   @override
   Future<List<MoveRecommendation>> analyze(GoGame game, {int max = 3}) async {
+    if (!_supportsBoard(game)) return fallback.analyze(game, max: max);
     try {
       final completion = await _complete(game, AiLevel.medium);
-      final parsed = parseLogosResponse(completion.text, game.size);
+      final parsed = _validatedAnswer(game, completion);
       final recs = <MoveRecommendation>[];
       for (final point in parsed.candidates) {
         if (!game.isLegal(point)) {
@@ -368,9 +426,14 @@ class LogosEngine implements MoveEngine {
         summary: 'No legal LoGos candidates, falling back to ${fallback.name}',
         isError: true,
       );
+    } on LogosReplyRejected catch (error) {
+      _emit(
+        summary: 'LoGos hint reply rejected: ${error.reason}; falling back to ${fallback.name}',
+        isError: true,
+      );
     } catch (error) {
       _emit(
-        summary: 'LoGos analyze failed, falling back to ${fallback.name}',
+        summary: 'LoGos analyze request failed, falling back to ${fallback.name}',
         detail: '$error',
         isError: true,
       );

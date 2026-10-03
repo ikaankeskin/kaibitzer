@@ -21,7 +21,7 @@ Kaibitzer is a Flutter app. The **game and tutor** run everywhere Flutter does. 
 | Surface | Built-in tutor | LoGos-7B (local LLM) | KataGo (GTP binary) |
 | --- | --- | --- | --- |
 | **Windows desktop** (`flutter run -d windows`) | Yes | Yes — Ollama (NVIDIA/AMD/CPU) | Yes — OpenCL build + network |
-| **macOS desktop** (`flutter run -d macos`) | Yes | Yes — Ollama (Metal) | Yes — download a **macOS** KataGo build, not the Windows zip |
+| **macOS desktop** (`flutter run -d macos`) | Yes | Yes — separately running Ollama (Metal) | HTTP endpoint; external GTP binary launch is unverified with App Sandbox |
 | **Linux desktop** | Yes | Yes — Ollama | Yes — OpenCL, CUDA, or Eigen build |
 | **Chrome / Edge** (`flutter run -d chrome`) or **GitHub Pages** | Yes | Yes, if Ollama (or another OpenAI-compatible URL) is reachable from the browser | Only if you set a KataGo **HTTP** URL |
 | **Android / iOS** | Yes | Remote OpenAI-compatible URL if you set one | HTTP URL only; no in-app binary |
@@ -63,6 +63,7 @@ Do not put secrets in a public URL unless you accept that they are visible.
 ## Requirements
 
 - [Flutter](https://docs.flutter.dev/get-started/install) 3.9+ (Dart 3.9)
+- macOS desktop: full Xcode with its macOS SDK selected via `xcode-select`
 - Optional: [Ollama](https://ollama.com/download) 0.18+ for LoGos
 - Optional: [KataGo](https://github.com/lightvector/KataGo/releases) for the neural-net opponent
 - Optional: Visual Studio **Desktop development with C++** on Windows if the KataGo OpenCL binary needs the MSVC runtime
@@ -82,11 +83,20 @@ flutter run -d macos
 
 If `flutter` is not on `PATH`, add your SDK `bin` directory first.
 
+The macOS runner is included and keeps App Sandbox enabled, with outgoing network access for LoGos and KataGo HTTP. Start Ollama separately for the sandboxed macOS app; launching external engine executables and reading their weights are not verified in this configuration. Use an HTTP endpoint for those engines. For a local server on a custom port:
+
+```bash
+flutter run -d macos --dart-define=LOGOS_URL=http://127.0.0.1:11435 --dart-define=LOGOS_MODEL=logos-7b
+```
+
+Build a local release app with `flutter build macos --release`; it appears at `build/macos/Build/Products/Release/Kaibitzer.app`.
+
+
 Play-screen keys: **H** hint, **1 2 3** play a suggestion. Robot icon = engine, speed icon = difficulty, terminal icon = engine console.
 
 ## Engines
 
-Pick an engine on **New game** or from the robot icon during play. Hints use the same engine as the opponent. Illegal or empty LoGos replies fall back to the built-in tutor for that turn.
+Pick an engine on **New game** or from the robot icon during play. LoGos inference is enabled for 19×19 boards; smaller boards use the built-in tutor immediately. Hints use the same engine as the opponent. Illegal or empty LoGos replies fall back to the built-in tutor for that turn.
 
 ### Built-in tutor
 
@@ -214,3 +224,7 @@ scripts/       Windows KataGo fetch, LoGos Ollama import
 engines/       Local weights (gitignored)
 modelfiles/    Ollama Modelfile templates
 ```
+
+## Planned next development step
+
+Distill LoGos into a small language model for offline iPhone Go moves and short English/Chinese explanations. Start the next session with [NEXT_STEPS.md](NEXT_STEPS.md), which records the current state, verified results, local setup, and resume checklist. The [distillation design](docs/mobile-logos-distillation.md) describes the proposed training and mobile evaluation path. Data filtering exists; no student model has been trained yet.

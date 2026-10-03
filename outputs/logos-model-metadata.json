@@ -1,0 +1,39 @@
+{
+  "template": "{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] %}{% else %}{% set loop_messages = messages %}{% endif %}{% if system_message is defined %}{{ system_message }}{% endif %}{% for message in loop_messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ content }}{% elif message['role'] == 'assistant' %}{{ content }}{% endif %}{% endfor %}",
+  "parameters": "num_ctx                        4096\ntemperature                    0.7",
+  "model_info": {
+    "general.architecture": "qwen2",
+    "general.base_model.0.name": "Qwen2.5 7B Instruct",
+    "general.base_model.0.organization": "Qwen",
+    "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct",
+    "general.base_model.count": 1,
+    "general.basename": "LoGos",
+    "general.file_type": 7,
+    "general.license": "apache-2.0",
+    "general.parameter_count": 7615616512,
+    "general.quantization_version": 2,
+    "general.size_label": "7B",
+    "general.tags": [
+      "agent",
+      "Go",
+      "text-generation"
+    ],
+    "general.type": "model",
+    "qwen2.attention.head_count": 28,
+    "qwen2.attention.head_count_kv": 4,
+    "qwen2.attention.layer_norm_rms_epsilon": 1e-06,
+    "qwen2.block_count": 28,
+    "qwen2.context_length": 131072,
+    "qwen2.embedding_length": 3584,
+    "qwen2.feed_forward_length": 18944,
+    "qwen2.rope.freq_base": 1000000,
+    "tokenizer.ggml.add_bos_token": false,
+    "tokenizer.ggml.eos_token_id": 151645,
+    "tokenizer.ggml.merges": [],
+    "tokenizer.ggml.model": "gpt2",
+    "tokenizer.ggml.padding_token_id": 151643,
+    "tokenizer.ggml.pre": "qwen2",
+    "tokenizer.ggml.token_type": [],
+    "tokenizer.ggml.tokens": []
+  }
+}

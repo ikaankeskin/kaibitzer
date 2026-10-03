@@ -4,6 +4,7 @@ import 'package:kaibitzer/ai/logos_prompt.dart';
 import 'package:kaibitzer/engine/point.dart';
 import 'package:kaibitzer/engine/rules.dart';
 import 'package:kaibitzer/engine/game.dart';
+import 'package:kaibitzer/engine/stone.dart';
 
 void main() {
   test('parses boxed LoGos coordinates and win rate', () {
@@ -40,6 +41,24 @@ void main() {
     expect(prompt, contains('请遵循给出的格式，预测并分析下一步的落子位置。'));
     expect(logosSystemPrompt(size: 9), contains('棋盘的大小为9x9'));
     expect(logosBoardMatrix(game), contains('[0, 0, 0, 0, 1, 0, 0, 0, 0]'));
+  });
+
+  test('prompt follows current stones after capture and pass', () {
+    final game = GoGame(GameRules.preset(boardSize: 19));
+    for (final move in ['C16', 'C15', 'Q16', 'D16', 'Q4', 'C17']) {
+      expect(game.play(Point.parse(move, 19)!).ok, isTrue);
+    }
+    game.pass();
+    expect(game.play(Point.parse('B16', 19)!).ok, isTrue);
+    expect(game.board.at(Point.parse('C16', 19)!), Stone.empty);
+    expect(game.toPlay, Stone.black);
+    final prompt = logosUserPrompt(game);
+    expect(prompt, contains('7.X-pass'));
+    expect(prompt, contains('8.O-B16'));
+    expect(prompt, contains('下一步颜色为黑'));
+    final rows = logosBoardMatrix(game);
+    // Rank 16 is the fourth row: B16 white, captured C16 empty, D16 white.
+    expect(rows.split('], ')[3], '[0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0');
   });
 
   test('formats Ollama nanosecond timings', () {

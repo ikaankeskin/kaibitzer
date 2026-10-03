@@ -8,7 +8,7 @@ extension EngineKindLabels on EngineKind {
   String get title => switch (this) {
         EngineKind.heuristic => 'Built-in tutor',
         EngineKind.katago => 'KataGo',
-        EngineKind.logos => 'LoGos-7B',
+        EngineKind.logos => 'LoGos-7B (19×19)',
       };
 
   String get summary => switch (this) {
@@ -17,7 +17,7 @@ extension EngineKindLabels on EngineKind {
         EngineKind.katago =>
           'Neural net. Desktop runs katago.exe; the web app can call an HTTP analysis server if you set a URL. There is no public free KataGo API.',
         EngineKind.logos =>
-          'Go LLM (YichuanMa/LoGos-7B). Tries local Ollama, or any OpenAI-compatible URL you set. If nothing answers, the tutor plays.',
+          'Go LLM for 19×19 boards. Uses Ollama or an OpenAI-compatible URL. Smaller boards and rejected answers use the built-in tutor.',
       };
 
   bool get isNeuralNet => this != EngineKind.heuristic;

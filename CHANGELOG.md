@@ -4,6 +4,15 @@ All notable changes to Kaibitzer are listed here. Version numbers follow [SemVer
 
 The `+N` suffix in `pubspec.yaml` is the store build number (Android `versionCode` / iOS `CFBundleVersion`).
 
+## Unreleased
+
+- Add and verify the macOS desktop runner, including outbound engine-network access.
+- Reject unfinished, wrong-player, and illegal LoGos answers with distinct diagnostics; increase the answer budget to 1,024 tokens.
+- Restrict LoGos inference to 19×19; smaller boards use the built-in tutor immediately.
+- Record local model reliability evidence and reproducible response tests.
+- Add teacher-data filtering and an offline review queue as groundwork for planned iPhone language-model distillation. No distilled student is available yet.
+- Add `NEXT_STEPS.md` as the next-session development handoff.
+
 ## 0.1.0 — 2026-08-28
 
 First public cut: a playable **web** game.
